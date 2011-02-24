@@ -20,14 +20,24 @@ class ColissimoAPI{
     private $parsedResponse = array();
     
     public function __construct($_key = 'd112dc5c716d443af02b13bf708f73985e7ee943'){
-        $this->key = $_key;
+        if(preg_match('#^[a-zA-Z0-9]{40}$#', $_key))
+            $this->key = $_key;
     }
     
     public function getStatus($_code, $_method = 'xml'){
+        if(!preg_match('#^[0-9]{1}[a-zA-Z]{1}[0-9]{11}#', $_code))
+            throw new Exception('Invalid code.');
+        
         $this->code = $_code;
+        
+        $allowed_methods = array('xml', 'json', 'img');
+        
+        if(!in_array($_method, $allowed_methods))
+            throw new Exception('Invalid method.');
+        
         $this->method = $_method;
         
-        $this->param_string = '?key='.$this->key.'&code='.$this->code;
+        $this->param_string = '?key='.urlencode($this->key).'&code='.urlencode($this->code);
         
         $res = $this->host.$this->page.$this->param_string;
         switch($_method){
