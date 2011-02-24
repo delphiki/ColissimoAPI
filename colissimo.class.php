@@ -20,8 +20,7 @@ class ColissimoAPI{
     private $parsedResponse = array();
     
     public function __construct($_key = 'd112dc5c716d443af02b13bf708f73985e7ee943'){
-        if(preg_match('#^[a-zA-Z0-9]{40}$#', $_key))
-            $this->key = $_key;
+            $this->setKey($_key);
     }
     
     public function getStatus($_code, $_method = 'xml'){
@@ -57,7 +56,10 @@ class ColissimoAPI{
     }
     
     public function setKey($_key){
-        $this->key = $_key;
+        if(preg_match('#^[a-zA-Z0-9]{40}$#', $_key))
+            $this->key = $_key;
+        else
+            throw new Exception('Invalid key.');
     }
     
     private function getXmlResponse(){
