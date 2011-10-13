@@ -4,6 +4,8 @@
 
     try{
 		$colis = new ColissimoAPI();
+		$colis->setImageDir('./tmp/'); // optionnal, default: ./images/
+
 		$res = $colis->getStatus('8L84527382672');
 	}
 	catch(Exception $e){

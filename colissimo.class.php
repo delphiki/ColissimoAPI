@@ -8,8 +8,10 @@
  */
 
 class ColissimoAPI{
+    private $image_dir = './images/';
     private $host = 'http://www.laposte.fr';
     private $page = '/outilsuivi/web/suiviInterMetiers.php';
+    private $user_agent = 'Dalvik/1.4.0 (Linux; U; Android 2.3.5; HTC Desire HD Build/GRJ90)';
     private $key;
     private $method;
     private $code;
@@ -20,7 +22,7 @@ class ColissimoAPI{
     private $parsedResponse = array();
     
     public function __construct($_key = 'd112dc5c716d443af02b13bf708f73985e7ee943'){
-            $this->setKey($_key);
+        $this->setKey($_key);
     }
     
     public function getStatus($_code, $_method = 'xml'){
@@ -48,11 +50,19 @@ class ColissimoAPI{
             break;
             case 'img':
             default:
-                return $this->host.$this->page.$this->param_string;
+                $this->getImageResponse();
             break;
         }
         
         return $this->parsedResponse;
+    }
+
+    public function setImageDir($_image_dir){
+        $this->image_dir = $_image_dir;
+        if(substr($this->image_dir, -1) !== '/')
+            $this->image_dir .= '/';
+        if(!is_writable($this->image_dir))
+            throw new Exception('Image directory not writable.');
     }
     
     public function setKey($_key){
@@ -61,12 +71,17 @@ class ColissimoAPI{
         else
             throw new Exception('Invalid key.');
     }
+
+    public function setUserAgent($_user_agent){
+        $this->user_agent = $_user_agent;
+    }
     
     private function getXmlResponse(){
         $ch = curl_init();
         
         $url = $this->host.$this->page.$this->param_string.'&method=xml';
         curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
 		curl_setopt($ch, CURLOPT_FAILONERROR, true); 
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
@@ -82,7 +97,8 @@ class ColissimoAPI{
         $ch = curl_init();
         
         $url = $this->host.$this->page.$this->param_string.'&method=json';
-        curl_setopt($ch, CURLOPT_URL, $url); 
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
 		curl_setopt($ch, CURLOPT_FAILONERROR, true); 
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
@@ -94,6 +110,28 @@ class ColissimoAPI{
         return $this->parseJsonResponse();
     }
     
+    private function getImageResponse(){
+        $ch = curl_init();
+        
+        $url = $this->host.$this->page.$this->param_string;
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
+        curl_setopt($ch, CURLOPT_FAILONERROR, true); 
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+        $data = curl_exec($ch);
+        curl_close($ch);
+        
+        $newImg = imagecreatefromstring($data);
+        imagejpeg($newImg, $this->image_dir.$this->code.'.jpg',100);
+
+        $this->parsedResponse = array(
+            'code' => $this->code,
+            'image' => $this->image_dir.$this->code.'.jpg'
+        );
+    }
+
     private function parseXmlResponse(){
         $dom = new DOMDocument('1.0', 'utf-8');
         if(!$dom->loadXML($this->xmlResponse)){
