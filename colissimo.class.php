@@ -25,7 +25,7 @@ class ColissimoAPI{
         $this->setKey($_key);
     }
     
-    public function getStatus($_code, $_method = 'xml'){
+    public function getStatus($_code, $_method = 'xml', $_plain = false){
         if(!preg_match('#^[0-9]{1}[a-zA-Z]{1}[0-9]{11}#', $_code))
             throw new Exception('Invalid code.');
         
@@ -54,7 +54,23 @@ class ColissimoAPI{
             break;
         }
         
-        return $this->parsedResponse;
+        return ($_plain ? $this->getPlainResponse() : $this->parsedResponse);
+    }
+
+    private function getPlainResponse(){
+        switch($this->method){
+            case 'xml':
+                $response = $this->xmlResponse;
+            break;
+            case 'json':
+                $response = $this->jsonResponse;
+            break;
+            case 'img':
+            default:
+                $response = $this->image_dir.$this->code.'.jpg';
+            break;
+        }
+        return $response;
     }
 
     public function setImageDir($_image_dir){
