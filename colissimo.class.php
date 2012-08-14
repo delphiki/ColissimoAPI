@@ -8,71 +8,23 @@
  */
 
 class ColissimoAPI{
-    private $image_dir = './images/';
     private $host = 'http://www.laposte.fr';
     private $page = '/outilsuivi/web/suiviInterMetiers.php';
     private $user_agent = 'Dalvik/1.4.0 (Linux; U; Android 2.3.5; HTC Desire HD Build/GRJ90)';
     private $key;
     private $method;
     private $code;
+    private $image_dir;
     private $param_string;
-    private $xmlResponse;
-    private $jsonResponse;
+    private $response;
     private $invalidResponse;
     private $parsedResponse = array();
     
     public function __construct($_key = 'd112dc5c716d443af02b13bf708f73985e7ee943'){
         $this->setKey($_key);
+        $this->setImageDir('./images/');
     }
     
-    public function getStatus($_code, $_method = 'xml', $_plain = false){
-        if(!preg_match('#^[0-9]{1}[a-zA-Z]{1}[0-9]{11}#', $_code))
-            throw new Exception('Invalid code.');
-        
-        $this->code = $_code;
-        
-        $allowed_methods = array('xml', 'json', 'img');
-        
-        if(!in_array($_method, $allowed_methods))
-            throw new Exception('Invalid method.');
-        
-        $this->method = $_method;
-        
-        $this->param_string = '?key='.urlencode($this->key).'&code='.urlencode($this->code);
-        
-        $res = $this->host.$this->page.$this->param_string;
-        switch($_method){
-            case 'xml':
-                $this->getXmlResponse();
-            break;
-            case 'json':
-                $this->getJsonResponse();
-            break;
-            case 'img':
-            default:
-                $this->getImageResponse();
-            break;
-        }
-        
-        return ($_plain ? $this->getPlainResponse() : $this->parsedResponse);
-    }
-
-    private function getPlainResponse(){
-        switch($this->method){
-            case 'xml':
-                $response = $this->xmlResponse;
-            break;
-            case 'json':
-                $response = $this->jsonResponse;
-            break;
-            case 'img':
-            default:
-                $response = $this->image_dir.$this->code.'.jpg';
-            break;
-        }
-        return $response;
-    }
-
     public function setImageDir($_image_dir){
         $this->image_dir = $_image_dir;
         if(substr($this->image_dir, -1) !== '/')
@@ -91,45 +43,33 @@ class ColissimoAPI{
     public function setUserAgent($_user_agent){
         $this->user_agent = $_user_agent;
     }
-    
-    private function getXmlResponse(){
-        $ch = curl_init();
+
+    public function getStatus($_code, $_method = 'xml', $_plain = false){
+        if(!preg_match('#^[0-9]{1}[a-zA-Z]{1}[0-9]{11}#', $_code))
+            throw new Exception('Invalid code.');
         
-        $url = $this->host.$this->page.$this->param_string.'&method=xml';
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
-		curl_setopt($ch, CURLOPT_FAILONERROR, true); 
-		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-		curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-		$data = curl_exec($ch);
-		curl_close($ch);
+        $this->code = $_code;
         
-        $this->xmlResponse = $data;
-        return $this->parseXmlResponse();
+        $allowed_methods = array('xml', 'json', 'img');
+        
+        if(!in_array($_method, $allowed_methods))
+            throw new Exception('Invalid method.');
+        
+        $this->method = $_method;
+        
+        $this->param_string = '?key='.urlencode($this->key).'&code='.urlencode($this->code);
+        
+        return $this->getResponse(!$_plain);
     }
-    
-    private function getJsonResponse(){
-        $ch = curl_init();
-        
-        $url = $this->host.$this->page.$this->param_string.'&method=json';
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
-		curl_setopt($ch, CURLOPT_FAILONERROR, true); 
-		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-		curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-		$data = curl_exec($ch);
-		curl_close($ch);
-        
-        $this->jsonResponse = $data;
-        return $this->parseJsonResponse();
-    }
-    
-    private function getImageResponse(){
+
+    private function getResponse($_parse = true){
         $ch = curl_init();
         
         $url = $this->host.$this->page.$this->param_string;
+     
+        if($this->method != 'img')
+            $url .= '&method='.$this->method;
+
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
@@ -138,57 +78,73 @@ class ColissimoAPI{
         curl_setopt($ch, CURLOPT_TIMEOUT, 3);
         $data = curl_exec($ch);
         curl_close($ch);
-        
-        $newImg = imagecreatefromstring($data);
-        imagejpeg($newImg, $this->image_dir.$this->code.'.jpg',100);
 
-        $this->parsedResponse = array(
-            'code' => $this->code,
-            'image' => $this->image_dir.$this->code.'.jpg'
-        );
+        $this->response = $data;
+
+        if($this->method == 'img' && !$_parse){
+            $this->response = $this->image_dir.$this->code.'.jpg';
+        }
+
+        return ($_parse) ? $this->parseResponse() : $this->response;
     }
 
-    private function parseXmlResponse(){
-        $dom = new DOMDocument('1.0', 'utf-8');
-        if(!$dom->loadXML($this->xmlResponse)){
-            $this->invalidResponse = $this->xmlResponse;
-            $this->xmlResponse = null;
-            
-            if($this->invalidResponse != '')
-                return $this->invalidResponse;
-            else
-                throw new Exception("Invalid XML.\n\n".$this->invalidResponse);
+   
+    private function parseResponse(){
+        switch($this->method){
+            default:
+                throw new Exception('Invalid method.');
+                break;
+            case 'img':
+                $newImg = imagecreatefromstring($this->response);
+                imagejpeg($newImg, $this->image_dir.$this->code.'.jpg',100);
+
+                $this->parsedResponse = array(
+                    'code' => $this->code,
+                    'image' => $this->image_dir.$this->code.'.jpg'
+                );
+                break;
+            case 'xml':
+                $dom = new DOMDocument('1.0', 'utf-8');
+                if(!$dom->loadXML($this->response)){
+                    $this->invalidResponse = $this->response;
+                    $this->response = null;
+                    
+                    if($this->invalidResponse != '')
+                        return $this->invalidResponse;
+                    else
+                        throw new Exception("Invalid XML.\n\n".$this->invalidResponse);
+                }
+                
+                $this->parsedResponse['status'] = $dom->getElementsByTagName('status')->item(0)->nodeValue;
+                $this->parsedResponse['code'] = $dom->getElementsByTagName('code')->item(0)->nodeValue;
+                $this->parsedResponse['client'] = $dom->getElementsByTagName('client')->item(0)->nodeValue;
+                $this->parsedResponse['date'] = $dom->getElementsByTagName('date')->item(0)->nodeValue;
+                $this->parsedResponse['message'] = $dom->getElementsByTagName('message')->item(0)->nodeValue;
+                $this->parsedResponse['gamme'] = $dom->getElementsByTagName('gamme')->item(0)->nodeValue;
+                $this->parsedResponse['base_label'] = $dom->getElementsByTagName('base_label')->item(0)->nodeValue;
+                $this->parsedResponse['link'] = $dom->getElementsByTagName('link')->item(0)->nodeValue;
+                $this->parsedResponse['error'] = $dom->getElementsByTagName('error')->item(0)->nodeValue;
+                
+                $this->parsedResponse = array_map('utf8_decode', $this->parsedResponse);
+                
+                break;
+            case 'json':
+                if($this->response === null){
+                    $this->invalidResponse = $this->response;
+                    $this->response = null;
+                    
+                    if($this->invalidResponse != '')
+                        return $this->invalidResponse;
+                    else
+                        throw new Exception("Invalid JSON.\n\n".$this->invalidResponse);
+                }
+                
+                $this->parsedResponse = json_decode($this->response, true);
+                $this->parsedResponse = array_map('utf8_decode', $this->parsedResponse);
+                
+                break;
         }
-        
-        $this->parsedResponse['status'] = $dom->getElementsByTagName('status')->item(0)->nodeValue;
-        $this->parsedResponse['code'] = $dom->getElementsByTagName('code')->item(0)->nodeValue;
-        $this->parsedResponse['client'] = $dom->getElementsByTagName('client')->item(0)->nodeValue;
-        $this->parsedResponse['date'] = $dom->getElementsByTagName('date')->item(0)->nodeValue;
-        $this->parsedResponse['message'] = $dom->getElementsByTagName('message')->item(0)->nodeValue;
-        $this->parsedResponse['gamme'] = $dom->getElementsByTagName('gamme')->item(0)->nodeValue;
-        $this->parsedResponse['base_label'] = $dom->getElementsByTagName('base_label')->item(0)->nodeValue;
-        $this->parsedResponse['link'] = $dom->getElementsByTagName('link')->item(0)->nodeValue;
-        $this->parsedResponse['error'] = $dom->getElementsByTagName('error')->item(0)->nodeValue;
-        
-        $this->parsedResponse = array_map('utf8_decode', $this->parsedResponse);
-        
-        return true;
-    }
-    
-    private function parseJsonResponse(){
-        if($this->jsonResponse === null){
-            $this->invalidResponse = $this->jsonResponse;
-            $this->jsonResponse = null;
-            
-            if($this->invalidResponse != '')
-                return $this->invalidResponse;
-            else
-                throw new Exception("Invalid JSON.\n\n".$this->invalidResponse);
-        }
-        
-        $this->parsedResponse = json_decode($this->jsonResponse, true);
-        $this->parsedResponse = array_map('utf8_decode', $this->parsedResponse);
-        
-        return true;
+
+        return $this->parsedResponse;
     }
 }
