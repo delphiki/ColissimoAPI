@@ -11,6 +11,7 @@ class ColissimoAPI{
     private $host = 'http://www.laposte.fr';
     private $page = '/outilsuivi/web/suiviInterMetiers.php';
     private $user_agent = 'Dalvik/1.4.0 (Linux; U; Android 2.3.5; HTC Desire HD Build/GRJ90)';
+    private $referer = 'http://www.laposte.fr/colissimo';
     private $key;
     private $method;
     private $code;
@@ -22,7 +23,7 @@ class ColissimoAPI{
     
     public function __construct($_key = 'd112dc5c716d443af02b13bf708f73985e7ee943'){
         $this->setKey($_key);
-        $this->setImageDir('./images/');
+        $this->setImageDir('images/');
     }
     
     public function setImageDir($_image_dir){
@@ -34,7 +35,7 @@ class ColissimoAPI{
     }
     
     public function setKey($_key){
-        if(preg_match('#^[a-zA-Z0-9]{40}$#', $_key))
+        if(preg_match('#^[a-zA-Z0-9]{40}$#', $_key) || empty($_key))
             $this->key = $_key;
         else
             throw new Exception('Invalid key.');
@@ -42,6 +43,11 @@ class ColissimoAPI{
 
     public function setUserAgent($_user_agent){
         $this->user_agent = $_user_agent;
+    }
+
+    public function setReferer($_referer){
+        if(filter_var($_referer, FILTER_VALIDATE_URL))
+            $this->referer = $_referer;
     }
 
     public function getStatus($_code, $_method = 'xml', $_plain = false){
@@ -72,6 +78,7 @@ class ColissimoAPI{
 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
+        curl_setopt($ch, CURLOPT_REFERER, $this->referer);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
         curl_setopt($ch, CURLOPT_FAILONERROR, true); 
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
@@ -81,11 +88,7 @@ class ColissimoAPI{
 
         $this->response = $data;
 
-        if($this->method == 'img' && !$_parse){
-            $this->response = $this->image_dir.$this->code.'.jpg';
-        }
-
-        return ($_parse) ? $this->parseResponse() : $this->response;
+        return ($_parse || $this->method == 'img') ? $this->parseResponse() : $this->response;
     }
 
    
@@ -96,11 +99,11 @@ class ColissimoAPI{
                 break;
             case 'img':
                 $newImg = imagecreatefromstring($this->response);
-                imagejpeg($newImg, $this->image_dir.$this->code.'.jpg',100);
+                imagepng($newImg, $this->image_dir.$this->code.'.png');
 
                 $this->parsedResponse = array(
                     'code' => $this->code,
-                    'image' => $this->image_dir.$this->code.'.jpg'
+                    'image' => $this->image_dir.$this->code.'.png'
                 );
                 break;
             case 'xml':
@@ -115,15 +118,15 @@ class ColissimoAPI{
                         throw new Exception("Invalid XML.\n\n".$this->invalidResponse);
                 }
                 
-                $this->parsedResponse['status'] = $dom->getElementsByTagName('status')->item(0)->nodeValue;
-                $this->parsedResponse['code'] = $dom->getElementsByTagName('code')->item(0)->nodeValue;
-                $this->parsedResponse['client'] = $dom->getElementsByTagName('client')->item(0)->nodeValue;
-                $this->parsedResponse['date'] = $dom->getElementsByTagName('date')->item(0)->nodeValue;
-                $this->parsedResponse['message'] = $dom->getElementsByTagName('message')->item(0)->nodeValue;
-                $this->parsedResponse['gamme'] = $dom->getElementsByTagName('gamme')->item(0)->nodeValue;
+                $this->parsedResponse['status']     = $dom->getElementsByTagName('status')->item(0)->nodeValue;
+                $this->parsedResponse['code']       = $dom->getElementsByTagName('code')->item(0)->nodeValue;
+                $this->parsedResponse['client']     = $dom->getElementsByTagName('client')->item(0)->nodeValue;
+                $this->parsedResponse['date']       = $dom->getElementsByTagName('date')->item(0)->nodeValue;
+                $this->parsedResponse['message']    = $dom->getElementsByTagName('message')->item(0)->nodeValue;
+                $this->parsedResponse['gamme']      = $dom->getElementsByTagName('gamme')->item(0)->nodeValue;
                 $this->parsedResponse['base_label'] = $dom->getElementsByTagName('base_label')->item(0)->nodeValue;
-                $this->parsedResponse['link'] = $dom->getElementsByTagName('link')->item(0)->nodeValue;
-                $this->parsedResponse['error'] = $dom->getElementsByTagName('error')->item(0)->nodeValue;
+                $this->parsedResponse['link']       = $dom->getElementsByTagName('link')->item(0)->nodeValue;
+                $this->parsedResponse['error']      = $dom->getElementsByTagName('error')->item(0)->nodeValue;
                 
                 $this->parsedResponse = array_map('utf8_decode', $this->parsedResponse);
                 
