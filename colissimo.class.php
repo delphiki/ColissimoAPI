@@ -11,7 +11,6 @@ class ColissimoAPI{
     private $host = 'http://www.laposte.fr';
     private $page = '/outilsuivi/web/suiviInterMetiers.php';
     private $user_agent = 'Dalvik/1.4.0 (Linux; U; Android 2.3.5; HTC Desire HD Build/GRJ90)';
-    private $referer = 'http://www.laposte.fr/colissimo';
     private $key;
     private $method;
     private $code;
@@ -78,7 +77,6 @@ class ColissimoAPI{
 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
-        curl_setopt($ch, CURLOPT_REFERER, $this->referer);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
         curl_setopt($ch, CURLOPT_FAILONERROR, true); 
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
