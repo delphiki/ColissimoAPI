@@ -22,9 +22,9 @@ class ColissimoAPI{
      * @access Public
      * @param string $_key
      */
-    public function __construct($_key = 'd112dc5c716d443af02b13bf708f73985e7ee943'){
+    public function __construct($_key = 'd112dc5c716d443af02b13bf708f73985e7ee943', $_image_dir = 'images/'){
         $this->setKey($_key);
-        $this->setImageDir('images/');
+        $this->setImageDir($_image_dir);
     }
     
     /**
