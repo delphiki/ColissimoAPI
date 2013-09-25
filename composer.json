@@ -1,0 +1,16 @@
+{
+    "name": "delphiki/colissimo-api",
+    "description": "PHP class taking advantage of the Colissimo's API to get a package delivery status",
+    "license": "BSD",
+    "authors": [
+        {
+            "name": "Julien Villetorte",
+            "email": "j.villetorte@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-0": {
+            "Colissimo": "src/"
+        }
+    }
+}
