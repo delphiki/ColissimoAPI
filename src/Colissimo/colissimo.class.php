@@ -34,7 +34,7 @@ class ColissimoAPI{
      * @access public
      * @name setImageDir()
      * @param Path of image Directory
-     * @throws Exception
+     * @throws \RuntimeException if the image directory is not writable.
      */
     public function setImageDir($_image_dir){
         $this->image_dir = $_image_dir;
@@ -50,7 +50,7 @@ class ColissimoAPI{
      * @access public
      * @name setKey
      * @param string $_key
-     * @throws Exception
+     * @throws \InvalidArgumentException if an invalid key is passed to the method.
      */
     public function setKey($_key ){
         if(preg_match('#^[a-zA-Z0-9]{40}$#', $_key) || empty($_key) ){
@@ -73,7 +73,7 @@ class ColissimoAPI{
      * @access public
      * @name setReferer()
      * @param string $_referer
-     * @throws Exception
+     * @throws \InvalidArgumentException if an invalid URL is passed to the method.
      */
     public function setReferer($_referer){
         if(filter_var($_referer, FILTER_VALIDATE_URL)) {
@@ -90,7 +90,7 @@ class ColissimoAPI{
      * @param string $_method
      * @param bool $_plain
      * @return Xml
-     * @throws Exception
+     * @throws \InvalidArgumentException if an invalid code or a non-whitelisted method is passed to the method.
      */
     public function getStatus($_code, $_method = 'xml', $_plain = false){
         if(!preg_match('#^[0-9]{1}[a-zA-Z]{1}[0-9]{11}#', $_code)) {
@@ -142,7 +142,8 @@ class ColissimoAPI{
     * @access private
     * @name parseResponse()
     * @return img, xml, json
-    * @throws Exception
+    * @throws \UnexpectedValueException if an unkwown method is required.
+    * @throws \RuntimeException if the response is invalid.
     */
     private function parseResponse(){
         switch($this->method){
