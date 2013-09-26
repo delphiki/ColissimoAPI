@@ -20,7 +20,7 @@ class ColissimoAPI{
     private $response;
     private $invalidResponse;
     private $parsedResponse = array();
-    
+
     /**
      * @access public
      * @param string $_key
@@ -29,12 +29,12 @@ class ColissimoAPI{
         $this->setKey($_key);
         $this->setImageDir($_image_dir);
     }
-    
+
     /**
      * @access public
      * @name setImageDir()
      * @param Path of image Directory
-     * @throws Exception
+     * @throws \RuntimeException if the image directory is not writable.
      */
     public function setImageDir($_image_dir){
         $this->image_dir = $_image_dir;
@@ -42,21 +42,21 @@ class ColissimoAPI{
             $this->image_dir .= '/';
         }
         if(!is_writable($this->image_dir)){
-            throw new Exception('Image directory not writable.');
+            throw new \RuntimeException('Image directory not writable.');
         }
     }
-    
+
     /**
      * @access public
      * @name setKey
      * @param string $_key
-     * @throws Exception
+     * @throws \InvalidArgumentException if an invalid key is passed to the method.
      */
     public function setKey($_key ){
         if(preg_match('#^[a-zA-Z0-9]{40}$#', $_key) || empty($_key) ){
             $this->key = $_key;
         } else {
-            throw new Exception('Invalid key or empty.');
+            throw new \InvalidArgumentException('Invalid key or empty.');
         }
     }
 
@@ -68,21 +68,21 @@ class ColissimoAPI{
     public function setUserAgent($_user_agent){
         $this->user_agent = $_user_agent;
     }
- 
+
     /**
      * @access public
      * @name setReferer()
      * @param string $_referer
-     * @throws Exception
+     * @throws \InvalidArgumentException if an invalid URL is passed to the method.
      */
     public function setReferer($_referer){
         if(filter_var($_referer, FILTER_VALIDATE_URL)) {
             $this->referer = $_referer;
         } else {
-            throw new Exception('Invalid URL');
+            throw new \InvalidArgumentException('Invalid URL');
         }
     }
-    
+
     /**
      * @access public
      * @name getStatus()
@@ -90,37 +90,37 @@ class ColissimoAPI{
      * @param string $_method
      * @param bool $_plain
      * @return Xml
-     * @throws Exception
+     * @throws \InvalidArgumentException if an invalid code or a non-whitelisted method is passed to the method.
      */
     public function getStatus($_code, $_method = 'xml', $_plain = false){
         if(!preg_match('#^[0-9]{1}[a-zA-Z]{1}[0-9]{11}#', $_code)) {
-            throw new Exception('Invalid code.');
+            throw new \InvalidArgumentException('Invalid code.');
         }
         $this->code = $_code;
-        
+
         $allowed_methods = array('xml', 'json', 'img');
-        
+
         if(!in_array($_method, $allowed_methods)){
-            throw new Exception('Invalid method.');
+            throw new \InvalidArgumentException('Invalid method.');
         }
         $this->method = $_method;
-        
+
         $this->param_string = '?key='.urlencode($this->key).'&code='.urlencode($this->code);
-        
+
         return $this->getResponse(!$_plain);
     }
-            
+
     /**
      * @access private
-     * @name getResponse()  
+     * @name getResponse()
      * @param bool $_parse
      * @return type
      */
     private function getResponse($_parse = true){
         $ch = curl_init();
-        
+
         $url = $this->host.$this->page.$this->param_string;
-     
+
         if($this->method != 'img'){
             $url .= '&method='.$this->method;
         }
@@ -142,12 +142,13 @@ class ColissimoAPI{
     * @access private
     * @name parseResponse()
     * @return img, xml, json
-    * @throws Exception
+    * @throws \UnexpectedValueException if an unkwown method is required.
+    * @throws \RuntimeException if the response is invalid.
     */
     private function parseResponse(){
         switch($this->method){
             default:
-                throw new Exception('Invalid method.');
+                throw new \UnexpectedValueException('Invalid method.');
                 break;
             case 'img':
                 $newImg = imagecreatefromstring($this->response);
@@ -163,14 +164,14 @@ class ColissimoAPI{
                 if(!$dom->loadXML($this->response)){
                     $this->invalidResponse = $this->response;
                     $this->response = null;
-                    
+
                     if($this->invalidResponse != NULL ) {
                         return $this->invalidResponse;
                     } else {
-                        throw new Exception("Invalid XML.\n\n" . $this->invalidResponse);
+                        throw new \RuntimeException("Invalid XML.\n\n" . $this->invalidResponse);
                     }
                 }
-                
+
                 $this->parsedResponse['status']     = $dom->getElementsByTagName('status')->item(0)->nodeValue;
                 $this->parsedResponse['code']       = $dom->getElementsByTagName('code')->item(0)->nodeValue;
                 $this->parsedResponse['client']     = $dom->getElementsByTagName('client')->item(0)->nodeValue;
@@ -180,25 +181,25 @@ class ColissimoAPI{
                 $this->parsedResponse['base_label'] = $dom->getElementsByTagName('base_label')->item(0)->nodeValue;
                 $this->parsedResponse['link']       = $dom->getElementsByTagName('link')->item(0)->nodeValue;
                 $this->parsedResponse['error']      = $dom->getElementsByTagName('error')->item(0)->nodeValue;
-                
+
                 $this->parsedResponse = array_map('utf8_decode', $this->parsedResponse);
-                
+
                 break;
             case 'json':
                 if($this->response === null){
                     $this->invalidResponse = $this->response;
                     $this->response = null;
-                    
+
                     if( $this->invalidResponse != NULL ){
                         return $this->invalidResponse;
                     } else {
-                        throw new Exception("Invalid JSON.\n\n".$this->invalidResponse);
+                        throw new \RuntimeException("Invalid JSON.\n\n".$this->invalidResponse);
                     }
                 }
-                
+
                 $this->parsedResponse = json_decode($this->response, true);
                 $this->parsedResponse = array_map('utf8_decode', $this->parsedResponse);
-                
+
                 break;
         }
         return $this->parsedResponse;
