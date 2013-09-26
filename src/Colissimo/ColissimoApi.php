@@ -1,4 +1,5 @@
 <?php
+
 /*
  * @author Julien 'delphiki' Villetorte <gdelphiki@gmail.com>
  * http://www.delphiki.com/
@@ -205,4 +206,3 @@ class ColissimoApi{
         return $this->parsedResponse;
     }
 }
-?>
