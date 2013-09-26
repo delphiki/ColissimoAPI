@@ -9,7 +9,8 @@
 
 namespace Colissimo;
 
-class ColissimoApi{
+class ColissimoApi
+{
     private $host = 'http://www.laposte.fr';
     private $page = '/outilsuivi/web/suiviInterMetiers.php';
     private $user_agent = 'Dalvik/1.4.0 (Linux; U; Android 2.3.5; HTC Desire HD Build/GRJ90)';
@@ -26,7 +27,8 @@ class ColissimoApi{
      * @access public
      * @param string $_key
      */
-    public function __construct($_key = 'd112dc5c716d443af02b13bf708f73985e7ee943', $_image_dir = 'images/'){
+    public function __construct($_key = 'd112dc5c716d443af02b13bf708f73985e7ee943', $_image_dir = 'images/')
+    {
         $this->setKey($_key);
         $this->setImageDir($_image_dir);
     }
@@ -37,12 +39,15 @@ class ColissimoApi{
      * @param Path of image Directory
      * @throws \RuntimeException if the image directory is not writable.
      */
-    public function setImageDir($_image_dir){
+    public function setImageDir($_image_dir)
+    {
         $this->image_dir = $_image_dir;
-        if(substr($this->image_dir, -1) !== '/'){
+
+        if (substr($this->image_dir, -1) !== '/') {
             $this->image_dir .= '/';
         }
-        if(!is_writable($this->image_dir)){
+
+        if (!is_writable($this->image_dir)) {
             throw new \RuntimeException('Image directory not writable.');
         }
     }
@@ -53,8 +58,8 @@ class ColissimoApi{
      * @param string $_key
      * @throws \InvalidArgumentException if an invalid key is passed to the method.
      */
-    public function setKey($_key ){
-        if(preg_match('#^[a-zA-Z0-9]{40}$#', $_key) || empty($_key) ){
+    public function setKey($_key ) {
+        if (preg_match('#^[a-zA-Z0-9]{40}$#', $_key) || empty($_key)) {
             $this->key = $_key;
         } else {
             throw new \InvalidArgumentException('Invalid key or empty.');
@@ -66,7 +71,8 @@ class ColissimoApi{
      * @name   setUserAgent()
      * @param  string $_user_agent
      */
-    public function setUserAgent($_user_agent){
+    public function setUserAgent($_user_agent)
+    {
         $this->user_agent = $_user_agent;
     }
 
@@ -76,8 +82,9 @@ class ColissimoApi{
      * @param string $_referer
      * @throws \InvalidArgumentException if an invalid URL is passed to the method.
      */
-    public function setReferer($_referer){
-        if(filter_var($_referer, FILTER_VALIDATE_URL)) {
+    public function setReferer($_referer)
+    {
+        if (filter_var($_referer, FILTER_VALIDATE_URL)) {
             $this->referer = $_referer;
         } else {
             throw new \InvalidArgumentException('Invalid URL');
@@ -93,17 +100,20 @@ class ColissimoApi{
      * @return Xml
      * @throws \InvalidArgumentException if an invalid code or a non-whitelisted method is passed to the method.
      */
-    public function getStatus($_code, $_method = 'xml', $_plain = false){
-        if(!preg_match('#^[0-9]{1}[a-zA-Z]{1}[0-9]{11}#', $_code)) {
+    public function getStatus($_code, $_method = 'xml', $_plain = false)
+    {
+        if (!preg_match('#^[0-9]{1}[a-zA-Z]{1}[0-9]{11}#', $_code)) {
             throw new \InvalidArgumentException('Invalid code.');
         }
+
         $this->code = $_code;
 
         $allowed_methods = array('xml', 'json', 'img');
 
-        if(!in_array($_method, $allowed_methods)){
+        if (!in_array($_method, $allowed_methods)) {
             throw new \InvalidArgumentException('Invalid method.');
         }
+
         $this->method = $_method;
 
         $this->param_string = '?key='.urlencode($this->key).'&code='.urlencode($this->code);
@@ -117,14 +127,16 @@ class ColissimoApi{
      * @param bool $_parse
      * @return type
      */
-    private function getResponse($_parse = true){
+    private function getResponse($_parse = true)
+    {
         $ch = curl_init();
 
         $url = $this->host.$this->page.$this->param_string;
 
-        if($this->method != 'img'){
+        if ($this->method != 'img') {
             $url .= '&method='.$this->method;
         }
+
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -136,7 +148,11 @@ class ColissimoApi{
 
         $this->response = $data;
 
-        return ($_parse || $this->method == 'img') ? $this->parseResponse() : $this->response;
+        if ($_parse || $this->method == 'img') {
+            return $this->parseResponse();
+        } else {
+            return $this->response();
+        }
     }
 
    /**
@@ -146,11 +162,9 @@ class ColissimoApi{
     * @throws \UnexpectedValueException if an unkwown method is required.
     * @throws \RuntimeException if the response is invalid.
     */
-    private function parseResponse(){
-        switch($this->method){
-            default:
-                throw new \UnexpectedValueException('Invalid method.');
-                break;
+    private function parseResponse()
+    {
+        switch ($this->method) {
             case 'img':
                 $newImg = imagecreatefromstring($this->response);
                 imagepng($newImg, $this->image_dir.$this->code.'.png');
@@ -159,14 +173,17 @@ class ColissimoApi{
                     'code' => $this->code,
                     'image' => $this->image_dir.$this->code.'.png'
                 );
+
                 break;
+
             case 'xml':
                 $dom = new DOMDocument('1.0', 'utf-8');
-                if(!$dom->loadXML($this->response)){
+
+                if (!$dom->loadXML($this->response)) {
                     $this->invalidResponse = $this->response;
                     $this->response = null;
 
-                    if($this->invalidResponse != NULL ) {
+                    if ($this->invalidResponse != NULL ) {
                         return $this->invalidResponse;
                     } else {
                         throw new \RuntimeException("Invalid XML.\n\n" . $this->invalidResponse);
@@ -186,12 +203,13 @@ class ColissimoApi{
                 $this->parsedResponse = array_map('utf8_decode', $this->parsedResponse);
 
                 break;
+
             case 'json':
-                if($this->response === null){
+                if ($this->response === null) {
                     $this->invalidResponse = $this->response;
                     $this->response = null;
 
-                    if( $this->invalidResponse != NULL ){
+                    if ( $this->invalidResponse != NULL ) {
                         return $this->invalidResponse;
                     } else {
                         throw new \RuntimeException("Invalid JSON.\n\n".$this->invalidResponse);
@@ -202,7 +220,11 @@ class ColissimoApi{
                 $this->parsedResponse = array_map('utf8_decode', $this->parsedResponse);
 
                 break;
+
+            default:
+                throw new \UnexpectedValueException('Invalid method.');
         }
+
         return $this->parsedResponse;
     }
 }
