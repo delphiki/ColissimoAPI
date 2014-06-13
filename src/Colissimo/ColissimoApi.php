@@ -11,9 +11,11 @@ namespace Colissimo;
 
 class ColissimoApi
 {
-    private $host = 'http://www.laposte.fr';
-    private $page = '/outilsuivi/web/suiviInterMetiers.php';
+    private $host       = 'http://www.laposte.fr';
+    private $page       = '/outilsuivi/web/suiviInterMetiers.php';
     private $user_agent = 'Dalvik/1.4.0 (Linux; U; Android 2.3.5; HTC Desire HD Build/GRJ90)';
+    private $referer    = 'http://www.laposte.fr/Particulier/Profiter-de-nos-services-en-ligne/Suivre-vos-envois';
+    
     private $key ;
     private $method;
     private $code;
@@ -58,7 +60,8 @@ class ColissimoApi
      * @param string $_key
      * @throws \InvalidArgumentException if an invalid key is passed to the method.
      */
-    public function setKey($_key ) {
+    public function setKey($_key)
+    {
         if (preg_match('#^[a-zA-Z0-9]{40}$#', $_key) || empty($_key)) {
             $this->key = $_key;
         } else {
@@ -139,6 +142,7 @@ class ColissimoApi
 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
+        curl_setopt($ch, CURLOPT_REFERER, $this->referer);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FAILONERROR, true);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
@@ -177,13 +181,13 @@ class ColissimoApi
                 break;
 
             case 'xml':
-                $dom = new DOMDocument('1.0', 'utf-8');
+                $dom = new \DOMDocument('1.0', 'utf-8');
 
                 if (!$dom->loadXML($this->response)) {
                     $this->invalidResponse = $this->response;
                     $this->response = null;
 
-                    if ($this->invalidResponse != NULL ) {
+                    if ($this->invalidResponse != null) {
                         return $this->invalidResponse;
                     } else {
                         throw new \RuntimeException("Invalid XML.\n\n" . $this->invalidResponse);
@@ -209,7 +213,7 @@ class ColissimoApi
                     $this->invalidResponse = $this->response;
                     $this->response = null;
 
-                    if ( $this->invalidResponse != NULL ) {
+                    if ($this->invalidResponse != null) {
                         return $this->invalidResponse;
                     } else {
                         throw new \RuntimeException("Invalid JSON.\n\n".$this->invalidResponse);
