@@ -64,6 +64,7 @@ class ColissimoApi
     {
         if (preg_match('#^[a-zA-Z0-9]{40}$#', $_key) || empty($_key)) {
             $this->key = $_key;
+            return $this;
         } else {
             throw new \InvalidArgumentException('Invalid key or empty.');
         }
@@ -77,6 +78,7 @@ class ColissimoApi
     public function setUserAgent($_user_agent)
     {
         $this->user_agent = $_user_agent;
+        return $this;
     }
 
     /**
@@ -89,6 +91,7 @@ class ColissimoApi
     {
         if (filter_var($_referer, FILTER_VALIDATE_URL)) {
             $this->referer = $_referer;
+            return $this;
         } else {
             throw new \InvalidArgumentException('Invalid URL');
         }
